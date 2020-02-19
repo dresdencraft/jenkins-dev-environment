@@ -1,0 +1,9 @@
+openjdkSource=1.8
+gradleVersion=5.2.1
+groovyAllVersion=2.4.12
+jenkinsVersion=2.190
+junitVersion=4.12
+yamlbeansVersion=1.08
+servletApiVersion=2.5
+pomGroupId=<Put something here>
+pomArtifactId=<Put something here>

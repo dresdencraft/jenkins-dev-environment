@@ -1,0 +1,3 @@
+def baseName = "${pomArtifactId}"
+
+rootProject.name = "${baseName}"

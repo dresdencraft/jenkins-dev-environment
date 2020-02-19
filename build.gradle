@@ -1,0 +1,268 @@
+import java.util.regex.Matcher
+
+plugins {
+    id 'groovy'
+    id 'maven'
+    id 'java'
+    id 'idea'
+    id 'net.researchgate.release' version '2.6.0'
+    id 'com.github.johnrengelman.shadow' version '2.0.4'
+}
+
+// Functions
+def getJenkinsPluginAttribute(String pluginName, String attribute) {
+    def updatePluginSluper = new groovy.json.JsonSlurper()
+    def updateCenterPlugins = updatePluginSluper.parse(
+            new java.net.URL("https://updates.jenkins.io/" + project.property('jenkinsVersion') + "/update-center.actual.json")
+    )
+    return updateCenterPlugins['plugins'][pluginName][attribute]
+}
+
+def baseName = "${pomArtifactId}"
+// End Functions
+
+group "${baseName}"
+version "${version}"
+
+sourceCompatibility = "${openjdkSource}"
+
+sourceSets {
+    main {
+        groovy {
+            srcDir 'src/main'
+            srcDir 'jobs'
+        }
+    }
+    jobs {
+        groovy {
+            srcDir 'jobs'
+        }
+    }
+    test {
+        groovy {
+            srcDir 'src/test'
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repo1.maven.org/maven2/"
+    }
+    maven {
+        url "http://central.maven.org/maven2/"
+    }
+    maven {
+        url "https://repo.jenkins-ci.org/public/"
+    }
+    maven {
+        url "http://repo.jenkins-ci.org/releases/"
+    }
+}
+
+configurations {
+    testPlugins {}
+
+    // see JENKINS-45512
+    testCompile {
+        exclude group: 'xalan'
+        exclude group: 'xerces'
+    }
+}
+
+dependencies {
+
+    def pluginVersionJobDsl = getJenkinsPluginAttribute('job-dsl','version')
+    def pluginVersionStructs = getJenkinsPluginAttribute('structs','version')
+    def pluginVersionScriptSecurity = getJenkinsPluginAttribute('script-security','version')
+    def pluginVersionCloudbeesFolder = getJenkinsPluginAttribute('cloudbees-folder','version')
+    def pluginVersionLdap = getJenkinsPluginAttribute('ldap','version')
+    def pluginVersionMailer = getJenkinsPluginAttribute('mailer','version')
+    def pluginVersionAntisamyMarkupFormatter = getJenkinsPluginAttribute('antisamy-markup-formatter','version')
+
+    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: "${groovyAllVersion}"
+    compile group: 'javax.servlet', name: 'servlet-api', version: "${servletApiVersion}"
+    compile group: 'org.jenkins-ci.main', name: 'jenkins-core', version: "${jenkinsVersion}"
+
+    // job-dsl plugin and dependencies
+    compile (group: 'org.jenkins-ci.plugins', name: 'job-dsl', version: pluginVersionJobDsl) {
+        artifact {
+            name = 'job-dsl'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'structs', version: pluginVersionStructs) {
+        artifact {
+            name = 'structs'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'script-security', version: pluginVersionScriptSecurity) {
+        artifact {
+            name = 'script-security'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'cloudbees-folder', version: pluginVersionCloudbeesFolder) {
+        artifact {
+            name = 'cloudbees-folder'
+            type = 'jar'
+        }
+    }
+
+    // Ldap and dependencies
+    compile (group: 'org.jenkins-ci.plugins', name: 'ldap', version: pluginVersionLdap) {
+        artifact {
+            name = 'ldap'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'mailer', version: pluginVersionMailer) {
+        artifact {
+            name = 'mailer'
+            type = 'jar'
+        }
+    }
+
+    //antisamy-markup-formatter
+    compile (group: 'org.jenkins-ci.plugins', name: 'antisamy-markup-formatter', version: pluginVersionAntisamyMarkupFormatter) {
+        artifact {
+            name = 'antisamy-markup-formatter'
+            type = 'jar'
+        }
+    }
+
+    //Other dependencies
+    compile group: 'com.esotericsoftware.yamlbeans', name: 'yamlbeans', version: "${yamlbeansVersion}"
+
+    // Unit Testing
+    testCompile group: 'junit', name: 'junit', version: "${junitVersion}"
+
+    // Spock for Jenkins Test Harness
+    testCompile group: 'org.spockframework', name: 'spock-core', version: "${spockCoreVersion}"
+    testCompile group: 'cglib', name: 'cglib-nodep', version: "${cglibNodepVersion}" // used by Spock
+
+    // Jenkins test harness dependencies
+    testCompile group: 'org.jenkins-ci.main', name: 'jenkins-test-harness', version: "${jenkinsTestHarnessVersion}"
+    testCompile group: 'org.jenkins-ci.main', name: 'jenkins-war', version: "${jenkinsVersion}"
+
+    // Job DSL plugin including plugin dependencies
+    testCompile "org.jenkins-ci.plugins:job-dsl:${pluginVersionJobDsl}"
+    testCompile "org.jenkins-ci.plugins:job-dsl:${pluginVersionJobDsl}@jar"
+    testCompile (group: 'org.jenkins-ci.plugins', name: 'structs', version: pluginVersionStructs) {
+        artifact {
+            name = 'structs'
+            type = 'jar'
+        }
+    }
+
+    def pluginsSlurper = new groovy.json.JsonSlurper()
+    def plugins = pluginsSlurper.parse(new java.io.File('plugins.json'))
+    def updatePluginSluper = new groovy.json.JsonSlurper()
+    def updateCenterPlugins = updatePluginSluper.parse(new java.net.URL("https://updates.jenkins.io/${jenkinsVersion}/update-center.actual.json"))
+
+    plugins.each { name, config ->
+
+        def gav = updateCenterPlugins.plugins."$name".gav
+        def groupId = gav.split(':')[0]
+        def testPluginGav = "${groupId}:${name}:${config.version}"
+
+        testPlugins testPluginGav
+    }
+}
+
+shadowJar {
+    baseName = "${baseName}"
+    classifier = null
+    version = "${version}"
+}
+
+artifacts {
+    archives shadowJar
+}
+
+task printProps {
+
+    def pluginVersionJobDsl = getJenkinsPluginAttribute('job-dsl','version')
+    def pluginVersionStructs = getJenkinsPluginAttribute('structs','version')
+    def pluginVersionScriptSecurity = getJenkinsPluginAttribute('script-security','version')
+    def pluginVersionCloudbeesFolder = getJenkinsPluginAttribute('cloudbees-folder','version')
+    def pluginVersionLdap = getJenkinsPluginAttribute('ldap','version')
+    def pluginVersionMailer = getJenkinsPluginAttribute('mailer','version')
+    def pluginVersionAntisamyMarkupFormatter = getJenkinsPluginAttribute('antisamy-markup-formatter','version')
+
+    doLast {
+        println "version\t\t\t\t\t${version}"
+        println "openjdkSource\t\t\t\t${openjdkSource}"
+        println "gradleVersion\t\t\t\t${gradleVersion}"
+        println "groovyAllVersion\t\t\t${groovyAllVersion}"
+        println "jenkinsVersion\t\t\t\t${jenkinsVersion}"
+        println "junitVersion\t\t\t\t${junitVersion}"
+        println "yamlbeansVersion\t\t\t${yamlbeansVersion}"
+        println "servletApiVersion\t\t\t${servletApiVersion}"
+        println "pomGroupId\t\t\t\t${pomGroupId}"
+        println "pomArtifactId\t\t\t\t${pomArtifactId}"
+        println "artifact_repository_url\t\t\t${artifact_repository_url}"
+        println "artifact_repo_username\t\t\t${artifact_repo_username}"
+        println "artifact_repo_password\t\t\t${artifact_repo_password}"
+        println "pluginVersionAntisamyMarkupFormatter\t${pluginVersionAntisamyMarkupFormatter}"
+        println "pluginVersionJobDsl\t\t\t${pluginVersionJobDsl}"
+        println "pluginVersionStructs\t\t\t${pluginVersionStructs}"
+        println "pluginVersionScriptSecurity\t\t${pluginVersionScriptSecurity}"
+        println "pluginVersionCloudbeesFolder\t\t${pluginVersionCloudbeesFolder}"
+        println "pluginVersionLdap\t\t\t${pluginVersionLdap}"
+        println "pluginVersionMailer\t\t\t${pluginVersionMailer}"
+        println "jenkinsTestHarnessVersion\t\t${jenkinsTestHarnessVersion}"
+        println "spockCoreVersion\t\t\t${spockCoreVersion}"
+        println "cglibNodepVersion\t\t\t${cglibNodepVersion}"
+        println "xalanVersion\t\t\t\t${xalanVersion}"
+        println "xmlApisVersion\t\t\t\t${xmlApisVersion}"
+    }
+
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "${artifact_repository_url}") {
+                authentication(userName: "${artifact_repo_username}", password: "${artifact_repo_password}")
+            }
+            pom.version = "${version}"
+            pom.artifactId = "${pomArtifactId}"
+            pom.groupId = "${pomGroupId}"
+        }
+    }
+}
+
+// TODO: Pushing a tag succeeds, but we get an annotation error that needs to be resolved.
+release {
+    failOnCommitNeeded = true
+    failOnPublishNeeded = true
+    failOnSnapshotDependencies = true
+    failOnUnversionedFiles = true
+    failOnUpdateNeeded = true
+    revertOnFail = true
+    preCommitText = ''
+    preTagCommitMessage = '[Gradle Release Plugin] - pre tag commit: '
+    tagCommitMessage = '[Gradle Release Plugin] - creating tag: '
+    newVersionCommitMessage = '[Gradle Release Plugin] - new version commit: '
+    tagTemplate = '${version}'
+    versionPropertyFile = 'gradle.properties'
+    versionProperties = []
+    buildTasks = ['build']
+    versionPatterns = [
+            /(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${(m[0][1] as int) + 1}${m[0][2]}") }
+    ]
+    scmAdapters = [
+            net.researchgate.release.GitAdapter
+    ]
+
+    git {
+        requireBranch = 'master'
+        pushToRemote = 'origin'
+        pushToBranchPrefix = ''
+        commitVersionFileOnly = false
+        signTag = false
+    }
+}

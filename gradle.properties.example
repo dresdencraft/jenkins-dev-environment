@@ -1,0 +1,17 @@
+version=0.0.1
+openjdkSource=1.8
+gradleVersion=5.2.1
+groovyAllVersion=2.4.12
+jenkinsVersion=2.190
+junitVersion=4.12
+yamlbeansVersion=1.08
+servletApiVersion=2.5
+pomGroupId=<Put something here>
+pomArtifactId=<Put something here>
+artifact_repository_url=null
+artifact_repo_username=null
+artifact_repo_password=null
+spockCoreVersion=1.0-groovy-2.4
+cglibNodepVersion=2.2.2
+xalanVersion=2.7.2
+xmlApisVersion=1.3.04

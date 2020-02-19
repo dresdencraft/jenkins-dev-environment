@@ -1,0 +1,111 @@
+apply plugin: 'application'
+
+mainClassName = "com.gmigdos.utils.gradle.DownloadDependencies"
+
+jar {
+    baseName = 'DownloadDependencies'
+    version =  '0.1.0'
+}
+
+def baseName = "${pomArtifactId}"
+group "${baseName}"
+version "${version}"
+
+sourceCompatibility = "${openjdkSource}"
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repo1.maven.org/maven2/"
+    }
+    maven {
+        url "http://central.maven.org/maven2/"
+    }
+    maven {
+        url "https://repo.jenkins-ci.org/public/"
+    }
+    maven {
+        url "http://repo.jenkins-ci.org/releases/"
+    }
+}
+
+dependencies {
+
+    def pluginVersionJobDsl = getJenkinsPluginAttribute('job-dsl','version')
+    def pluginVersionStructs = getJenkinsPluginAttribute('structs','version')
+    def pluginVersionScriptSecurity = getJenkinsPluginAttribute('script-security','version')
+    def pluginVersionCloudbeesFolder = getJenkinsPluginAttribute('cloudbees-folder','version')
+    def pluginVersionLdap = getJenkinsPluginAttribute('ldap','version')
+    def pluginVersionMailer = getJenkinsPluginAttribute('mailer','version')
+    def pluginVersionAntisamyMarkupFormatter = getJenkinsPluginAttribute('antisamy-markup-formatter','version')
+
+    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: "${groovyAllVersion}"
+    compile group: 'javax.servlet', name: 'servlet-api', version: "${servletApiVersion}"
+    compile group: 'org.jenkins-ci.main', name: 'jenkins-core', version: "${jenkinsVersion}"
+
+    // job-dsl plugin and dependencies
+    compile (group: 'org.jenkins-ci.plugins', name: 'job-dsl', version: pluginVersionJobDsl) {
+        artifact {
+            name = 'job-dsl'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'structs', version: pluginVersionStructs) {
+        artifact {
+            name = 'structs'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'script-security', version: pluginVersionScriptSecurity) {
+        artifact {
+            name = 'script-security'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'cloudbees-folder', version: pluginVersionCloudbeesFolder) {
+        artifact {
+            name = 'cloudbees-folder'
+            type = 'jar'
+        }
+    }
+
+    // Ldap and dependencies
+    compile (group: 'org.jenkins-ci.plugins', name: 'ldap', version: pluginVersionLdap) {
+        artifact {
+            name = 'ldap'
+            type = 'jar'
+        }
+    }
+    compile (group: 'org.jenkins-ci.plugins', name: 'mailer', version: pluginVersionMailer) {
+        artifact {
+            name = 'mailer'
+            type = 'jar'
+        }
+    }
+
+    //antisamy-markup-formatter
+    compile (group: 'org.jenkins-ci.plugins', name: 'antisamy-markup-formatter', version: pluginVersionAntisamyMarkupFormatter) {
+        artifact {
+            name = 'antisamy-markup-formatter'
+            type = 'jar'
+        }
+    }
+
+    //Other dependencies
+    compile group: 'com.esotericsoftware.yamlbeans', name: 'yamlbeans', version: "${yamlbeansVersion}"
+
+    // Unit Testing
+    testCompile group: 'junit', name: 'junit', version: "${junitVersion}"
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "${gradleVersion}"
+}
+
+def getJenkinsPluginAttribute(String pluginName, String attribute) {
+    def updatePluginSluper = new groovy.json.JsonSlurper()
+    def updateCenterPlugins = updatePluginSluper.parse(
+            new java.net.URL("https://updates.jenkins.io/" + project.property('jenkinsVersion') + "/update-center.actual.json")
+    )
+    return updateCenterPlugins['plugins'][pluginName][attribute]
+}
